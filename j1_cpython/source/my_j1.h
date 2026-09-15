@@ -77,11 +77,20 @@ static inline void calculate_offsets (double *arr, size_t size, size_t *mid_star
  */
 void j1_combined(double *arr, size_t size, double *result)
 {
-    double *sorted_arguments = _mm_malloc(size*sizeof(double), 32);
-    double *sorted_result = _mm_malloc(size*sizeof(double), 32);
+    // нам нужно больше памяти, чтобы каждый блок был выровнен по 32-байтовой границе
+    double *sorted_arguments = _mm_malloc((size + 8)*sizeof(double), 32);
+    double *sorted_result = _mm_malloc((size + 8)*sizeof(double), 32);
 
     size_t mid_start, hi_start;
     calculate_offsets(arr, size, &mid_start, &hi_start); // считаем смещения
+    
+    // сохраняем размеры
+    size_t lo_size = mid_start;
+    size_t mid_size = hi_start - mid_start;
+    size_t hi_size = size - hi_start;
+  
+    mid_start += (4 - (mid_start % 4)); // выравниваем mid_start
+    hi_start -= (hi_start % 4); // выравниваем hi_start
 
     // кладем в массив sorted_arguments подряд значения из соответствующих диапазонов
     size_t lo_ind = 0, mid_ind = mid_start, hi_ind = hi_start;
@@ -100,11 +109,11 @@ void j1_combined(double *arr, size_t size, double *result)
 
     // обрабатываем каждый диапазон соответствующей функцией
     if (hi_start < size)
-        j1_large_values(sorted_arguments + hi_start, size - hi_start, sorted_result + hi_start);
+        j1_large_values(sorted_arguments + hi_start, hi_size, sorted_result + hi_start);
     if (mid_start < hi_start)
-        j1_chebyshev(sorted_arguments + mid_start, hi_start - mid_start, sorted_result + mid_start);
+        j1_chebyshev(sorted_arguments + mid_start, mid_size, sorted_result + mid_start);
     if (mid_start != 0 && hi_start != 0)
-        j1_taylor(sorted_arguments, mid_start, sorted_result);
+        j1_taylor(sorted_arguments, lo_size, sorted_result);
 
     _mm_free(sorted_arguments);
 
@@ -124,3 +133,4 @@ void j1_combined(double *arr, size_t size, double *result)
 
     _mm_free(sorted_result);
 }
+
