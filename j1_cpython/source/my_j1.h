@@ -89,8 +89,8 @@ void j1_combined(double *arr, size_t size, double *result)
     size_t mid_size = hi_start - mid_start;
     size_t hi_size = size - hi_start;
   
-    mid_start += (4 - (mid_start % 4)); // выравниваем mid_start
-    hi_start -= (hi_start % 4); // выравниваем hi_start
+    mid_start = (mid_start + 3) & ~0x3; // выравниваем mid_start
+    hi_start &= ~0x3; // выравниваем hi_start
 
     // кладем в массив sorted_arguments подряд значения из соответствующих диапазонов
     size_t lo_ind = 0, mid_ind = mid_start, hi_ind = hi_start;
@@ -106,13 +106,13 @@ void j1_combined(double *arr, size_t size, double *result)
         else
             sorted_arguments[hi_ind++] = arr[i];
     }
-
+  
     // обрабатываем каждый диапазон соответствующей функцией
-    if (hi_start < size)
+    if (hi_size > 0)
         j1_large_values(sorted_arguments + hi_start, hi_size, sorted_result + hi_start);
-    if (mid_start < hi_start)
+    if (mid_size > 0)
         j1_chebyshev(sorted_arguments + mid_start, mid_size, sorted_result + mid_start);
-    if (mid_start != 0 && hi_start != 0)
+    if (lo_size > 0)
         j1_taylor(sorted_arguments, lo_size, sorted_result);
 
     _mm_free(sorted_arguments);
@@ -133,4 +133,3 @@ void j1_combined(double *arr, size_t size, double *result)
 
     _mm_free(sorted_result);
 }
-
